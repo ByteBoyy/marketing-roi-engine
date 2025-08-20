@@ -3,6 +3,9 @@ Main execution script demonstrating the complete advertising ROI optimization wo
 File: main.py
 """
 
+import utils.http_session
+import utils.transport
+import utils.session
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
