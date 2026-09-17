@@ -149,11 +149,12 @@ class DataProcessor:
         result = df.groupby(['campaign_id', 'platform', 'date']).agg(agg_dict).reset_index()
         
         # Calculate derived metrics
-        result['cpc'] = result['spend'] / result['clicks'].replace(0, 1)
-        result['ctr'] = result['clicks'] / result['impressions'].replace(0, 1)
-        result['conversion_rate'] = result['orders'] / result['clicks'].replace(0, 1)
-        result['acos'] = result['spend'] / result['sales'].replace(0, 1)
-        result['roas'] = result['sales'] / result['spend'].replace(0, 1)
+        # Zero denominators represent unavailable ratios, not a denominator of one.
+        result['cpc'] = (result['spend'] / result['clicks']).where(result['clicks'] > 0, 0.0)
+        result['ctr'] = (result['clicks'] / result['impressions']).where(result['impressions'] > 0, 0.0)
+        result['conversion_rate'] = (result['orders'] / result['clicks']).where(result['clicks'] > 0, 0.0)
+        result['acos'] = (result['spend'] / result['sales']).where(result['sales'] > 0, 0.0)
+        result['roas'] = (result['sales'] / result['spend']).where(result['spend'] > 0, 0.0)
         
         return result
     

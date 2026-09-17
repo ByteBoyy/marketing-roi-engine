@@ -99,6 +99,22 @@ class TestDataProcessor(unittest.TestCase):
         self.assertTrue('cpc' in aggregated_df.columns)
         self.assertTrue('ctr' in aggregated_df.columns)
         self.assertTrue('roas' in aggregated_df.columns)
+
+    def test_aggregate_campaign_data_handles_zero_denominators(self):
+        """Undefined campaign ratios should be reported as zero."""
+        data = self.df.copy()
+        data.loc[0, ['clicks', 'impressions', 'orders', 'sales', 'spend']] = 0
+
+        result = self.processor.aggregate_campaign_data(
+            self.processor.validate_data(data, 'campaign')
+        )
+        row = result[result['campaign_id'] == 'CAMP-001'].iloc[0]
+
+        self.assertEqual(row['cpc'], 0.0)
+        self.assertEqual(row['ctr'], 0.0)
+        self.assertEqual(row['conversion_rate'], 0.0)
+        self.assertEqual(row['acos'], 0.0)
+        self.assertEqual(row['roas'], 0.0)
     
     def test_calculate_rolling_metrics(self):
         """Test rolling metrics calculation"""
