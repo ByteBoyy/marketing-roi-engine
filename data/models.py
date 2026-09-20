@@ -163,19 +163,33 @@ class DataProcessor:
         df = df.sort_values(['campaign_id', 'date'])
         
         for window in window_days:
-            for metric in ['spend', 'sales', 'roas', 'acos']:
-                col_name = f'{metric}_rolling_{window}d'
-                if metric in ['roas', 'acos']:
-                    # For ratios, calculate from rolling spend and sales
-                    rolling_spend = df.groupby('campaign_id')['spend'].rolling(window=window, min_periods=1).sum().values
-                    rolling_sales = df.groupby('campaign_id')['sales'].rolling(window=window, min_periods=1).sum().values
-                    
-                    if metric == 'roas':
-                        df[col_name] = rolling_sales / np.where(rolling_spend == 0, 1, rolling_spend)
-                    else:  # acos
-                        df[col_name] = rolling_spend / np.where(rolling_sales == 0, 1, rolling_sales)
-                else:
-                    df[col_name] = df.groupby('campaign_id')[metric].rolling(window=window, min_periods=1).sum().values
+            rolling_spend = (
+                df.groupby('campaign_id')['spend']
+                .rolling(window=window, min_periods=1)
+                .sum()
+                .to_numpy()
+            )
+            rolling_sales = (
+                df.groupby('campaign_id')['sales']
+                .rolling(window=window, min_periods=1)
+                .sum()
+                .to_numpy()
+            )
+
+            df[f'spend_rolling_{window}d'] = rolling_spend
+            df[f'sales_rolling_{window}d'] = rolling_sales
+            df[f'roas_rolling_{window}d'] = np.divide(
+                rolling_sales,
+                rolling_spend,
+                out=np.zeros_like(rolling_sales, dtype=float),
+                where=rolling_spend > 0,
+            )
+            df[f'acos_rolling_{window}d'] = np.divide(
+                rolling_spend,
+                rolling_sales,
+                out=np.zeros_like(rolling_spend, dtype=float),
+                where=rolling_sales > 0,
+            )
         
         return df
 
