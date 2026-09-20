@@ -125,6 +125,23 @@ class TestDataProcessor(unittest.TestCase):
         self.assertTrue('spend_rolling_7d' in rolling_df.columns)
         self.assertTrue('roas_rolling_7d' in rolling_df.columns)
 
+    def test_calculate_rolling_metrics_handles_zero_denominators(self):
+        """Rolling ratios should be zero until their denominator is positive."""
+        data = pd.DataFrame({
+            'campaign_id': ['CAMP-001', 'CAMP-001'],
+            'date': pd.to_datetime(['2023-01-01', '2023-01-02']),
+            'spend': [0.0, 20.0],
+            'sales': [50.0, 0.0],
+        })
+
+        one_period = self.processor.calculate_rolling_metrics(data, [1])
+        self.assertEqual(one_period.iloc[0]['roas_rolling_1d'], 0.0)
+        self.assertEqual(one_period.iloc[1]['acos_rolling_1d'], 0.0)
+
+        two_period = self.processor.calculate_rolling_metrics(data, [2])
+        self.assertEqual(two_period.iloc[1]['roas_rolling_2d'], 2.5)
+        self.assertEqual(two_period.iloc[1]['acos_rolling_2d'], 0.4)
+
 class TestDataWarehouse(unittest.TestCase):
     """Test data warehouse functionality"""
     
