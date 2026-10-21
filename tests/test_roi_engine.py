@@ -99,6 +99,22 @@ class TestDataProcessor(unittest.TestCase):
         self.assertTrue('cpc' in aggregated_df.columns)
         self.assertTrue('ctr' in aggregated_df.columns)
         self.assertTrue('roas' in aggregated_df.columns)
+
+    def test_aggregate_campaign_data_handles_zero_denominators(self):
+        """Undefined campaign ratios should be reported as zero."""
+        data = self.df.copy()
+        data.loc[0, ['clicks', 'impressions', 'orders', 'sales', 'spend']] = 0
+
+        result = self.processor.aggregate_campaign_data(
+            self.processor.validate_data(data, 'campaign')
+        )
+        row = result[result['campaign_id'] == 'CAMP-001'].iloc[0]
+
+        self.assertEqual(row['cpc'], 0.0)
+        self.assertEqual(row['ctr'], 0.0)
+        self.assertEqual(row['conversion_rate'], 0.0)
+        self.assertEqual(row['acos'], 0.0)
+        self.assertEqual(row['roas'], 0.0)
     
     def test_calculate_rolling_metrics(self):
         """Test rolling metrics calculation"""
@@ -108,6 +124,23 @@ class TestDataProcessor(unittest.TestCase):
         
         self.assertTrue('spend_rolling_7d' in rolling_df.columns)
         self.assertTrue('roas_rolling_7d' in rolling_df.columns)
+
+    def test_calculate_rolling_metrics_handles_zero_denominators(self):
+        """Rolling ratios should be zero until their denominator is positive."""
+        data = pd.DataFrame({
+            'campaign_id': ['CAMP-001', 'CAMP-001'],
+            'date': pd.to_datetime(['2023-01-01', '2023-01-02']),
+            'spend': [0.0, 20.0],
+            'sales': [50.0, 0.0],
+        })
+
+        one_period = self.processor.calculate_rolling_metrics(data, [1])
+        self.assertEqual(one_period.iloc[0]['roas_rolling_1d'], 0.0)
+        self.assertEqual(one_period.iloc[1]['acos_rolling_1d'], 0.0)
+
+        two_period = self.processor.calculate_rolling_metrics(data, [2])
+        self.assertEqual(two_period.iloc[1]['roas_rolling_2d'], 2.5)
+        self.assertEqual(two_period.iloc[1]['acos_rolling_2d'], 0.4)
 
 class TestDataWarehouse(unittest.TestCase):
     """Test data warehouse functionality"""
